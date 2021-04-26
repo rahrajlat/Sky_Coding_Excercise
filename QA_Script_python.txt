@@ -1,0 +1,47 @@
+import sys
+
+import cx_Oracle
+def run_qa_test(Password_File,Control_Table):
+    #read the credentials from the Control File
+    with open(Password_File) as Cred_File:
+        credential=Cred_File.readlines()[0].split("~")
+    hostname=credential[0]
+    port=credential[1]
+    service=credential[2]
+    user=credential[3]
+    pwd=credential[4]
+    #Attempt Connection to the Database
+    Connection_Details = cx_Oracle.makedsn(hostname, port, service_name=service)
+    try:
+        Connection = cx_Oracle.connect(user=user, password=pwd, dsn=Connection_Details)
+        con = Connection.cursor()
+    except:
+        sys.exit("Unable to Connect to the Database")
+
+
+    con.execute('select * from '+Control_Table)
+    for row in con:
+        code = row[0]
+        enabled = row[2]
+        parameter = row[3]
+        test_sql = row[4]
+        if enabled == "Y":
+            parameter_len = parameter.split(",")
+            if len(parameter_len) == 1:
+                environment = parameter
+                exe_sql = test_sql.replace("env", environment)
+                con1 = Connection.cursor()
+                con1.execute(exe_sql)
+                qa_results = con1.fetchone()
+                print(code + "~" + exe_sql + "~" + str(qa_results[0]))
+            else:
+                environment = parameter_len[0]
+                date_var = parameter_len[1]
+                exe_sql = test_sql.replace("env", environment).replace("= date", "='" + date_var + "'")
+                con1 = Connection.cursor()
+                con1.execute(exe_sql)
+                qa_results = con1.fetchone()
+                print(code + "~" + exe_sql + "~" + str(qa_results[0]))
+
+if __name__ == "__main__":
+    run_qa_test('C:\\Users\\rahra\\OneDrive\\Desktop\\SKY\\Python\\Creds.txt','devdb.qa_tests')

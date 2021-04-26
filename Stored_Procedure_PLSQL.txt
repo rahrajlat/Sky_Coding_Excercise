@@ -1,0 +1,54 @@
+CREATE OR REPLACE PROCEDURE procqatesting
+IS
+
+--Declare necessary Variables
+var_code varchar2(20);
+var_test_sql varchar2(2000);
+var_exp_result varchar2(10);
+var_parameter varchar2(50);
+var_enabled varchar2(10);
+var_distinct_tests varchar2(10);
+var_replace_sql varchar2(2000);
+var_replace_sql1 varchar2(2000);
+var_environment varchar2(10);
+var_run_date varchar2(100);
+var_comma_index varchar2(10);
+var_par_1 varchar2(10);
+var_par_2 varchar2(10);
+var_qa_sql varchar2(10);
+var_quote varchar2(20);
+BEGIN
+--Loop Through the Control Table  
+   for var_code_value in (select distinct code from devdb.qa_tests)
+  loop
+  select code,test_sql,exp_result,parameter,enabled into var_code,var_test_sql,var_exp_result,var_parameter,var_enabled from devdb.qa_tests where code=var_code_value.code;
+    var_comma_index := INSTR(var_parameter, ',');
+    
+--Perform QA validation only if the flag is yes
+     IF var_enabled='Y' 
+    THEN
+    
+    IF var_comma_index=0 THEN
+    var_replace_sql:=REPLACE(var_test_sql,'env',var_parameter );
+	
+	--- Execute the SQL
+    EXECUTE IMMEDIATE var_replace_sql INTO var_qa_sql;
+    DBMS_OUTPUT.PUT_LINE(var_code ||'~'|| var_replace_sql||'~'||var_qa_sql);
+    
+    ELSE
+    var_par_1 := SUBSTR(var_parameter, 1,var_comma_index);
+    var_par_2 := SUBSTR(var_parameter, var_comma_index+1,length(var_parameter));
+    var_replace_sql1:=REPLACE(var_test_sql,'env',var_par_1 );
+    var_replace_sql:=REPLACE(var_replace_sql1,'= date', '='||''''|| var_par_2||'''' );
+    EXECUTE IMMEDIATE var_replace_sql INTO var_qa_sql;
+     
+    --- Execute the SQL
+    DBMS_OUTPUT.PUT_LINE(var_code ||'~'|| var_replace_sql||'~'||var_qa_sql);
+END IF;
+    END IF;
+    
+  end loop;
+  
+ 
+  END;
+/
